@@ -49,7 +49,6 @@ body {
     font-size: 20px;
 }
 
-/* ================== SIDEBAR NAVIGATION PANEL ================== */
 .sidebar-nav {
     background-color: #c4dcff;
     padding: 25px 20px;
@@ -118,7 +117,6 @@ body {
     
 }
 
-/* ================== EXPANDER STYLING ================== */
 .stExpander {
     border: 2px solid #004aad !important;
     border-radius: 10px !important;
@@ -138,7 +136,6 @@ body {
     background-color: #f5f8ff !important;
 }
 
-/* ================== BUTTON STYLING ================== */
 .stButton > button {
     background-color: #004aad !important;
     color: white !important;
@@ -157,7 +154,6 @@ body {
     box-shadow: 0 4px 8px rgba(0, 74, 173, 0.3) !important;
 }
 
-/* ================== TEXT INPUT STYLING ================== */
 .stTextInput > div > div > input {
     background-color: white !important;
     border: 2px solid #004aad !important;
@@ -172,7 +168,6 @@ body {
     font-weight: 500 !important;
 }
 
-/* ================== STATUS STYLING ================== */
 .status-card {
     background-color: #e8f0ff;
     padding: 20px;
@@ -191,7 +186,6 @@ body {
     border-left: 5px solid #ffc107 !important;
 }
 
-/* ================== VIDEO STYLING ================== */
 .video-container {
     background-color: #e8f0ff;
     padding: 20px;
@@ -199,7 +193,6 @@ body {
     margin-top: 15px;
 }
 
-/* ================== RESULTS HEADERS ================== */
 .results-header {
     font-size: 20px !important;
     font-weight: bold !important;
@@ -209,7 +202,6 @@ body {
     border-bottom: 2px solid #004aad !important;
 }
 
-/* ================== TEXT AREA STYLING ================== */
 .stText textarea {
     font-size: 16px !important;
     line-height: 1.6 !important;
@@ -219,7 +211,6 @@ body {
     padding: 15px !important;
 }
 
-/* Vertical separator between sidebar and main content */
 .sidebar-container {
     position: relative;
     padding-right: 20px;
@@ -236,14 +227,12 @@ body {
     border-radius: 2px;
 }
 
-/* Or use border-right on the sidebar-nav */
 .sidebar-nav {
     border-right: 4px solid #004aad !important;
     padding-right: 20px !important;
     margin-right: 15px !important;
 }
             
-/* ================== ALERT MESSAGES ================== */
 .stAlert {
     font-size: 16px !important;
     border-radius: 8px !important;
@@ -262,13 +251,10 @@ st.markdown(f"""
 if "system" not in st.session_state:
     st.session_state.system = None
 
-# Create layout with sidebar and main content
 left, right = st.columns([1, 3])
 
 with left:
     #st.markdown('<div class="sidebar-nav">', unsafe_allow_html=True)
-    
-    # Personal Information Section
     #st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
     st.markdown('<div class="sidebar-title">Personal Information</div>', unsafe_allow_html=True)
     
@@ -311,14 +297,12 @@ with left:
 
     col3, col4 = st.columns(2)
 
-    
 
     st.markdown('</div>', unsafe_allow_html=True)
     
     if st.button("Generate Results", key="generate_results", use_container_width=True):
         if st.session_state.system:
             with st.spinner("Generating reports..."):
-                # Safe unpacking fix
                 reports = st.session_state.system.generate_mini_reports()
                 driver_report = reports[0] if len(reports) > 0 else "No driver report generated."
                 crossing_report = reports[1] if len(reports) > 1 else "No crossing report generated."
@@ -453,7 +437,6 @@ with right:
             st.info("Generate results to view the final comprehensive report.")
 
     
-    # Driver Behavior Section
     with st.expander("Driver Behavior Analysis", expanded=False):
         if "driver_report" in st.session_state:
             col1, col2 = st.columns(2)
@@ -465,7 +448,6 @@ with right:
         else:
             st.info("No driver behavior report available. Please generate results.")
     
-    # Collision Detection Section
     with st.expander("Crossing Events Analysis", expanded=False):
         if "crossing_report" in st.session_state:
             col1, col2 = st.columns(2)
