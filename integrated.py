@@ -19,11 +19,9 @@ from matplotlib.patches import ConnectionPatch
 
 jordan = pytz.timezone("Asia/Amman")
 
-# Global variable for national ID and base directory
 NATIONAL_ID = None
 BASE_DIR = None
 
-# Initialize loggers as None, will be created after national ID is entered
 driver_logger = None
 crossing_logger = None
 
@@ -63,7 +61,6 @@ def convert_avi_to_mp4_slow(input_avi, speed=0.20):
     return None
 
 def get_national_id():
-    """Get national ID from user input and create directory"""
     global NATIONAL_ID, BASE_DIR
     
     while True:
@@ -72,7 +69,6 @@ def get_national_id():
             NATIONAL_ID = national_id
             BASE_DIR = os.path.join(os.getcwd(), NATIONAL_ID)
             
-            # Create directory if it doesn't exist
             if not os.path.exists(BASE_DIR):
                 os.makedirs(BASE_DIR)
                 print(f"Created directory: {BASE_DIR}")
@@ -84,10 +80,8 @@ def get_national_id():
             print("National ID cannot be empty. Please try again.")
 
 def get_filename_with_id(base_name, extension=""):
-    """Generate filename with national ID and timestamp"""
     global NATIONAL_ID, BASE_DIR
     
-    # Check if national ID is set
     if NATIONAL_ID is None or BASE_DIR is None:
         raise ValueError("National ID not set. Call get_national_id() first.")
     
@@ -99,7 +93,6 @@ def get_filename_with_id(base_name, extension=""):
     return os.path.join(BASE_DIR, filename)
 
 def init_loggers():
-    """Initialize loggers after national ID is set"""
     global driver_logger, crossing_logger
     
     driver_logger = DriverLogger()
@@ -148,7 +141,6 @@ class CrossingLogger:
             f.write(file_message + "\n")
     
     def log_crossing_event(self, event_type, pedestrian_id, details=""):
-        """Log specific crossing events with details"""
         timestamp = datetime.now(jordan).strftime("%Y-%m-%d %H:%M:%S")
         message = f"{event_type} - Pedestrian ID: {pedestrian_id}"
         if details:
@@ -161,8 +153,6 @@ class CrossingLogger:
         
         with open(self.log_filename, 'a', encoding='utf-8') as f:
             f.write(file_message + "\n")
-
-
 
 
 
@@ -213,15 +203,15 @@ class SeatbeltDetector:
         self.seatbelt_worn_count = 0
         self.seatbelt_not_worn_count = 0
         self.detection_count = 0
-        self.detection_active = True  # Flag to control if detection is active
-        self.detection_end_time = None  # Time when detection should stop
+        self.detection_active = True
+        self.detection_end_time = None 
 
     def _log_with_timestamp(self, message):
         driver_logger.log_with_timestamp(message)
 
     def start_evaluation(self):
         self.evaluation_start_time = time.time()
-        self.detection_end_time = self.evaluation_start_time + 20  # Stop detection after 20 seconds
+        self.detection_end_time = self.evaluation_start_time + 20  
         self._log_with_timestamp(f"seatbelt evaluation started at {datetime.now().strftime('%H:%M:%S')}")
         self._log_with_timestamp(f"seatbelt detection will be active for 20 seconds (until {datetime.fromtimestamp(self.detection_end_time).strftime('%H:%M:%S')})")
 
@@ -253,25 +243,21 @@ class SeatbeltDetector:
     def process_frame(self, frame, clean_mode=False):
         self.frame_count += 1
     
-        # Check if seatbelt detection period has ended
         current_time = time.time()
         if self.detection_end_time is not None and current_time > self.detection_end_time:
             if self.detection_active:
                 self.detection_active = False
                 self._log_with_timestamp("seatbelt detection period ended (20 seconds elapsed)")
-            return frame, "Detection Period Ended", 0.0, None  # Added None for bbox
+            return frame, "Detection Period Ended", 0.0, None 
     
-        # Only process seatbelt detection if active
         if not self.detection_active:
-            return frame, "Detection Period Ended", 0.0, None  # Added None for bbox
+            return frame, "Detection Period Ended", 0.0, None  
 
-        # Skip frames logic (only if detection is active)
         if self.frame_count % self.SKIP_FRAMES != 0:
-            return frame, self.last_seatbelt_status, 0.0, None  # Added None for bbox
-    
+            return frame, self.last_seatbelt_status, 0.0, None  
         seatbelt_status = "Not Detected"
         confidence = 0.0
-        bbox = None  # Will store (x1, y1, x2, y2)
+        bbox = None 
 
         if self.model_loaded:
             try:
@@ -284,7 +270,6 @@ class SeatbeltDetector:
                         confidence = detection['confidence']
                         class_name = detection['name']
 
-                        # Store bounding box coordinates
                         x1, y1, x2, y2 = int(detection['xmin']), int(detection['ymin']), \
                                         int(detection['xmax']), int(detection['ymax'])
                         bbox = (x1, y1, x2, y2)
@@ -309,7 +294,6 @@ class SeatbeltDetector:
                             draw_color = self.COLOR_YELLOW
                             self.seatbelt_worn_count += 1
 
-                        # Draw bounding box and label (always for annotated, never for clean)
                         if not clean_mode:
                             self.draw_bounding_box(frame, x1, y1, x2, y2, draw_color)
                             status_text = f"{class_name} {confidence:.2f}"
@@ -325,7 +309,6 @@ class SeatbeltDetector:
                 self._log_with_timestamp(f"Error in seatbelt detection: {e}")
                 seatbelt_status = "Error"
         else:
-            # Simulation mode
             if self.detection_active and self.frame_count % 60 == 0: 
                 if self.last_seatbelt_status == "Worn":
                     seatbelt_status = "Not Worn"
@@ -352,7 +335,8 @@ class SeatbeltDetector:
         if seatbelt_status != "Not Detected":
             self.last_seatbelt_status = seatbelt_status
 
-        return frame, seatbelt_status, confidence, bbox  # Return bbox info
+        return frame, seatbelt_status, confidence, bbox  
+    
 class HeadHandTracker:
     def __init__(self):
         import warnings
@@ -400,7 +384,6 @@ class HeadHandTracker:
         self.csv_file = open(self.CSV_FILENAME, "w", newline="", encoding='utf-8')
         self.csv_writer = csv.writer(self.csv_file)
         
-        # REMOVED seatbelt columns from CSV
         self.csv_writer.writerow([
             'Timestamp', 'Head_Pose', 'X_Angle', 'Y_Angle', 'Z_Angle', 
             'Hands_Detected', 'Hands_Count', 'Both_Hands_Visible',
@@ -489,7 +472,7 @@ class HeadHandTracker:
 
         init_params = sl.InitParameters()
         init_params.camera_resolution = sl.RESOLUTION.HD720
-        init_params.set_from_serial_number(35674499)  # SECOND ZED
+        init_params.set_from_serial_number(35674499)
         init_params.camera_fps = 30
         init_params.depth_mode = sl.DEPTH_MODE.PERFORMANCE
         init_params.coordinate_units = sl.UNIT.METER
@@ -623,7 +606,6 @@ class HeadHandTracker:
     def process_frame(self, image, clean_mode=False):
         frame_start_time = time.time()
     
-        # For clean mode, we still need to flip for consistency but won't draw annotations
         if not clean_mode:
             image = cv2.flip(image, 1)
         img_h, img_w, img_c = image.shape
@@ -649,28 +631,24 @@ class HeadHandTracker:
         face_detected = "No"
         mirror_check_recorded = "No"
 
-        # Process seatbelt detection (now returns bbox info)
         seatbelt_image, seatbelt_status, seatbelt_confidence, seatbelt_bbox = \
             self.seatbelt_detector.process_frame(image, clean_mode=clean_mode)
         image = seatbelt_image
 
-        # Display seatbelt status with confidence on annotated video
         current_time = time.time()
         if (self.seatbelt_detector.evaluation_start_time is not None and 
             current_time - self.seatbelt_detector.evaluation_start_time <= 20 and
             not clean_mode):
 
-            # Determine color based on status
             if seatbelt_status == "Worn":
-                seatbelt_color = (0, 255, 0)  # Green
+                seatbelt_color = (0, 255, 0)  
             elif seatbelt_status == "Not Worn":
-                seatbelt_color = (0, 0, 255)  # Red
+                seatbelt_color = (0, 0, 255)  
             elif seatbelt_status == "Detection Period Ended":
-                seatbelt_color = (128, 128, 128)  # Gray
+                seatbelt_color = (128, 128, 128) 
             else:
-                seatbelt_color = (255, 255, 255)  # White
+                seatbelt_color = (255, 255, 255) 
         
-            # Display seatbelt status and confidence
             if seatbelt_confidence > 0:
                 seatbelt_text = f"Seatbelt: {seatbelt_status} ({seatbelt_confidence:.2f})"
             else:
@@ -679,13 +657,10 @@ class HeadHandTracker:
             cv2.putText(image, seatbelt_text, (20, 250), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, seatbelt_color, 2)
 
-            # Optionally show elapsed time in detection period
             elapsed = current_time - self.seatbelt_detector.evaluation_start_time
             time_text = f"Seatbelt Check: {elapsed:.1f}s / 20s"
             cv2.putText(image, time_text, (20, 280), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-        # ... rest of the existing code for face and hand tracking ...
 
         if face_results.multi_face_landmarks:
             face_detected = "Yes"
@@ -800,7 +775,6 @@ class HeadHandTracker:
 
         frame_processing_time = (time.time() - frame_start_time) * 1000
 
-        # CSV data remains unchanged
         csv_data = [
             timestamp, head_pose, round(x_angle, 2), round(y_angle, 2), round(z_angle, 2),
             hands_detected, hands_count, both_hands_visible,
@@ -821,7 +795,6 @@ class HeadHandTracker:
             self._log_with_timestamp(f"driver monitoring csv saved: {self.CSV_FILENAME}")
 
     def generate_driver_mini_report(self):
-        """Generate mini-report for driver monitoring segment"""
 
         mirror_mark = self.calculate_mirror_mark()
         seatbelt_mark = self.seatbelt_detector.calculate_seatbelt_mark()
@@ -868,7 +841,6 @@ DRIVER MONITORING TOTAL: {total_driver_mark}/25
 
 class CrossingDetector:
     def __init__(self):
-        # -------------- CONFIG -------------- #
         self.l1 = 1.76
         self.l2 = 2.76
         self.CHECK_EVERY = 4
@@ -879,7 +851,6 @@ class CrossingDetector:
 
         self._log("Initializing crossing system...")
 
-        # ---------- CSV FILE ---------- #
         self.CSV_FILENAME = get_filename_with_id("crossing_data", "csv")
         self.csv_file = open(self.CSV_FILENAME, "w", newline="", encoding="utf-8")
         self.csv_writer = csv.writer(self.csv_file)
@@ -894,7 +865,6 @@ class CrossingDetector:
 
         self._log(f"CSV file created: {self.CSV_FILENAME}")
 
-        # ---------- STATE ---------- #
         self.zed = None
         self.prev_pos = {}
         self.prev_ty_raw = None
@@ -905,19 +875,15 @@ class CrossingDetector:
         self.current_frame = None
         self.frame_lock = threading.Lock()
         
-        # Track crossing events for logging
-        self.pedestrian_status = {}  # Track each pedestrian's crossing status
-        self.crossing_events = []  # Store crossing events for logging
+        self.pedestrian_status = {} 
+        self.crossing_events = [] 
 
-    # ---------- LOGGING ---------- #
     def _log(self, message):
         print(f"[CrossingDetector] {message}")
 
     def _log_crossing_event(self, event_type, pedestrian_id, details=""):
-        """Log crossing events with proper timestamp"""
         crossing_logger.log_crossing_event(event_type, pedestrian_id, details)
 
-    # ---------- TRANSFORMS ---------- #
     def camera_to_global_position(self, px, py, pz):
         angle = math.radians(self.PITCH_DEG)
         Xg = px
@@ -933,7 +899,6 @@ class CrossingDetector:
         wg = (qw * math.cos(angle)) - (qx * math.sin(angle))
         return [xg, yg, zg, wg]
 
-    # ---------- DRAW BBOX ---------- #
     def draw_bbox(self, frame, obj, status, clean_mode=False):
         if obj.bounding_box_2d is None or clean_mode:
             return frame
@@ -958,7 +923,6 @@ class CrossingDetector:
 
         return frame
 
-    # ---------- ZED INIT ---------- #
     def initialize_zed_camera(self):
         self._log("Initializing ZED camera...")
 
@@ -991,7 +955,6 @@ class CrossingDetector:
         self._log("ZED camera initialized")
         return True
 
-    # ---------- MAIN LOOP ---------- #
     def run_combined_mode(self):
         self._log("Starting crossing detection...")
 
@@ -1016,17 +979,14 @@ class CrossingDetector:
             if self.zed.grab(runtime) != sl.ERROR_CODE.SUCCESS:
                 continue
 
-            # -------- TIME -------- #
             now = datetime.now(self.tz)
             readable = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
             epoch = now.timestamp()
 
-            # -------- IMAGE -------- #
             self.zed.retrieve_image(image, sl.VIEW.LEFT)
             frame = image.get_data()[:, :, :3].copy()
-            clean_frame = frame.copy()  # Keep a clean copy
+            clean_frame = frame.copy()  
 
-            # -------- POSE + VELOCITY -------- #
             self.zed.get_position(pose, sl.REFERENCE_FRAME.WORLD)
             tx_raw, ty_raw, tz_raw = pose.get_translation().get()
 
@@ -1040,7 +1000,6 @@ class CrossingDetector:
             self.prev_ty_raw = ty_raw
             self.prev_time = epoch
 
-            # -------- BODY DETECTION -------- #
             self.zed.retrieve_bodies(bodies, body_run)
             wrote = False
 
@@ -1059,7 +1018,6 @@ class CrossingDetector:
                 qg = self.camera_to_global_quaternion(qx, qy, qz, qw)
                 yaw, _, _ = R.from_quat(qg).as_euler("zyx", degrees=True)
 
-                # ---------- CROSSING LOGIC ---------- #
                 if self.frame_count % self.CHECK_EVERY == 0:
                     old_x = self.prev_pos.get(obj.id, Pg[0])
                     new_x = Pg[0]
@@ -1067,21 +1025,18 @@ class CrossingDetector:
                     if self.YAW_MIN <= abs(yaw) <= self.YAW_MAX:
                         if (old_x < 0 < new_x) or (old_x > 0 > new_x):
                             status = "crossing"
-                            # Log crossing event
                             if obj.id not in self.pedestrian_status or self.pedestrian_status[obj.id] != "crossing":
                                 self._log_crossing_event("PEDESTRIAN STARTED CROSSING", obj.id, 
                                                        f"Position: x={Pg[0]:.2f}, y={Pg[1]:.2f}, z={Pg[2]:.2f}, Yaw={yaw:.1f}°")
                                 self.pedestrian_status[obj.id] = "crossing"
                         else:
                             status = "about_to_cross"
-                            # Log about to cross event
                             if obj.id not in self.pedestrian_status or self.pedestrian_status[obj.id] != "about_to_cross":
                                 self._log_crossing_event("PEDESTRIAN ABOUT TO CROSS", obj.id,
                                                        f"Position: x={Pg[0]:.2f}, yaw={yaw:.1f}°, Velocity={vel_raw_kmh:.1f} km/h")
                                 self.pedestrian_status[obj.id] = "about_to_cross"
                     else:
                         status = "not_crossing"
-                        # Reset status if pedestrian is no longer crossing/approaching
                         if obj.id in self.pedestrian_status and self.pedestrian_status[obj.id] != "not_crossing":
                             self._log_crossing_event("PEDESTRIAN NOT CROSSING", obj.id,
                                                    f"Yaw={yaw:.1f}° (outside crossing range)")
@@ -1093,10 +1048,8 @@ class CrossingDetector:
 
                 crossing_label = status
 
-                # Draw on annotated frame only
                 frame = self.draw_bbox(frame, obj, status, clean_mode=False)
 
-                # -------- WRITE CSV -------- #
                 self.csv_writer.writerow([
                     epoch, readable,
                     ty_raw,
@@ -1110,7 +1063,6 @@ class CrossingDetector:
                 self.csv_file.flush()
                 wrote = True
 
-            # -------- NO PERSON -------- #
             if not wrote:
                 self.csv_writer.writerow([
                     epoch, readable,
@@ -1124,26 +1076,22 @@ class CrossingDetector:
                 ])
                 self.csv_file.flush()
                 
-                # Log if pedestrians were present before but now gone
                 if self.pedestrian_status:
                     self._log_crossing_event("NO PEDESTRIANS DETECTED", "N/A", 
                                            f"Previously tracking {len(self.pedestrian_status)} pedestrian(s)")
                     self.pedestrian_status.clear()
 
-            # Store both annotated and clean frames for UI
             with self.frame_lock:
                 self.current_frame = frame.copy()
                 self.current_clean_frame = clean_frame.copy()
 
             self.frame_count += 1
 
-        # -------- CLEANUP -------- #
         self.zed.close()
         self.csv_file.close()
         self._log(f"Crossing detection stopped. CSV saved: {self.CSV_FILENAME}")
         self._log_crossing_event("SYSTEM STOPPED", "N/A", f"Total frames processed: {self.frame_count}")
 
-    # ---------- GET CURRENT FRAME ---------- #
     def get_current_frame(self, clean_mode=False):
         with self.frame_lock:
             if clean_mode:
@@ -1151,7 +1099,6 @@ class CrossingDetector:
             else:
                 return self.current_frame.copy() if self.current_frame is not None else None
 
-    # ---------- STOP ---------- #
     def stop(self):
         self._log("Stopping crossing detection...")
         self.running = False
@@ -1159,7 +1106,6 @@ class CrossingDetector:
         self._log("Stopped.")
 
     def generate_crossing_mini_report(self, crossing_mark, crossing_decision, crossing_details):
-        """Generate mini-report for crossing segment"""
         report = f"""MINI-REPORT: PEDESTRIAN CROSSING BEHAVIOR
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 National ID: {NATIONAL_ID}
@@ -1210,30 +1156,25 @@ class IntegratedMonitoringSystem:
         self.head_hand_tracker = HeadHandTracker()
         self.running = False
         self.annotated_writer = None
-        self.clean_writer = None  # New writer for clean video
+        self.clean_writer = None
         #self.annotated_window_name = "Driver & Crossing Monitoring"
         self.evaluation_start_time = None
 
     def setup_annotated_recording(self, width, height, fps=30):
-        """Setup video writers for annotated and clean feeds"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
-        # Annotated video writer
         self.annotated_filename = get_filename_with_id("annotated_monitoring", "avi")
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         self.annotated_writer = cv2.VideoWriter(self.annotated_filename, fourcc, fps, (width, height))
-        print(f"✓ Annotated video recording: {os.path.basename(self.annotated_filename)}")
+        print(f"Annotated video recording: {os.path.basename(self.annotated_filename)}")
         
-        # Clean video writer
         self.clean_filename = get_filename_with_id("clean_monitoring", "avi")
         self.clean_writer = cv2.VideoWriter(self.clean_filename, fourcc, fps, (width, height))
-        print(f"✓ Clean video recording: {os.path.basename(self.clean_filename)}")
+        print(f"Clean video recording: {os.path.basename(self.clean_filename)}")
 
     def combine_feeds(self, driver_frame, crossing_frame, clean_mode=False):
-        """Combine driver and crossing feeds into one frame"""
         target_height = 360
         
-        # For clean mode, get clean frames from both sources
         if clean_mode:
             driver_clean = self.head_hand_tracker.get_zed_frame(clean_mode=True) if hasattr(self.head_hand_tracker, 'get_zed_frame') else driver_frame
             crossing_clean = self.crossing_detector.get_current_frame(clean_mode=True)
@@ -1267,7 +1208,6 @@ class IntegratedMonitoringSystem:
         return annotated_frame
 
     def run_combined_system(self):
-        """Run both systems with combined display and recording - runs indefinitely until ESC key"""
         print("Starting Combined Monitoring System")
         print(f"National ID: {NATIONAL_ID}")
         print(f"Output Directory: {BASE_DIR}")
@@ -1312,7 +1252,6 @@ class IntegratedMonitoringSystem:
         try:
             frame_count = 0
             while self.running:
-                # Get annotated frames for display
                 driver_frame = self.head_hand_tracker.get_zed_frame(clean_mode=False)
                 if driver_frame is None:
                     print("no driver frame")
@@ -1324,16 +1263,13 @@ class IntegratedMonitoringSystem:
                     cv2.putText(crossing_frame, "NO ZED FRAME", (200, 240), 
                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
                 
-                # Combine annotated frames for display
                 combined_annotated = self.combine_feeds(driver_frame, crossing_frame, clean_mode=False)
                 
-                # Create clean combined frame for clean video
                 combined_clean = self.combine_feeds(driver_frame, crossing_frame, clean_mode=True)
                 
                 # Display annotated version
                 #cv2.imshow(self.annotated_window_name, combined_annotated)
                 
-                # Save both videos
                 if self.annotated_writer is not None:
                     self.annotated_writer.write(combined_annotated)
                 if self.clean_writer is not None:
@@ -1350,9 +1286,6 @@ class IntegratedMonitoringSystem:
             self.stop_combined_system()
             print("combined monitoring system stopped")
 
-    # ============================================================
-    # CROSSING EVALUATION FUNCTION
-    # ============================================================
     def evaluate_crossing_csv(self):
         df = pd.read_csv(self.crossing_detector.CSV_FILENAME)
         df["time_dt"] = pd.to_datetime(df["timestamp_readable"])
@@ -1423,7 +1356,6 @@ class IntegratedMonitoringSystem:
                 "justification": f"Speed={speed_avg:.2f} km/h ({speed_label}) and {slope_label}"
             })
 
-        # Final decision
         failing = [c for c in crossing_details if c["decision"] == "FAIL"]
 
         final_score = 0 if len(failing) > 0 else 25
@@ -1432,20 +1364,17 @@ class IntegratedMonitoringSystem:
         return crossing_details, final_score, final_decision
     
     def generate_mini_reports(self):
-        """Generate and save mini-reports for each segment"""
         print("\n" + "="*60)
         print("GENERATING MINI-REPORTS")
         print("="*60)
         
-        # Generate driver monitoring mini-report
         driver_report = self.head_hand_tracker.generate_driver_mini_report()
         driver_filename = get_filename_with_id("driver_mini_report", "txt")
         with open(driver_filename, 'w') as f:
             f.write(driver_report)
-        print(f"✓ Driver monitoring mini-report saved: {os.path.basename(driver_filename)}")
+        print(f"Driver monitoring mini-report saved: {os.path.basename(driver_filename)}")
         print(driver_report)
         
-        # Generate crossing mini-report
         cross_details, crossing_mark, crossing_decision = self.evaluate_crossing_csv()
         crossing_report = self.crossing_detector.generate_crossing_mini_report(
             crossing_mark, crossing_decision, cross_details
@@ -1453,7 +1382,7 @@ class IntegratedMonitoringSystem:
         crossing_filename = get_filename_with_id("crossing_mini_report", "txt")
         with open(crossing_filename, 'w') as f:
             f.write(crossing_report)
-        print(f"✓ Crossing mini-report saved: {os.path.basename(crossing_filename)}")
+        print(f"Crossing mini-report saved: {os.path.basename(crossing_filename)}")
         print(crossing_report)
         
        
@@ -1465,7 +1394,6 @@ class IntegratedMonitoringSystem:
         print("GENERATING FINAL EVALUATION REPORT")
         print("="*60)
         
-        # First generate mini-reports
         driver_report, crossing_report = self.generate_mini_reports()
         
         print("\n" + "="*60)
@@ -1568,7 +1496,6 @@ Generated by Integrated Driver Monitoring System
         print(f"Comprehensive report saved to: {os.path.basename(report_filename)}")
         print(f"All files saved in directory: {BASE_DIR}")
         
-        # Show quick summary
         print("\nQUICK SCORE SUMMARY:")
         print(f"  Driver Monitoring: {mirror_mark + seatbelt_mark}/20")
         print(f"  Pedestrian Crossing: {crossing_mark}/25")
@@ -1576,49 +1503,38 @@ Generated by Integrated Driver Monitoring System
         return report_content, total_mark
 
     def stop_combined_system(self):
-        """Safely stop system, save videos, and convert AVI to MP4 for Streamlit"""
-
         print("\nStopping combined monitoring system...")
         if hasattr(self, '_stop_called') and self._stop_called:
-            print("⚠️ Stop already called, skipping duplicate call")
+            print("Stop already called, skipping duplicate call")
             return
-        self._stop_called = True  # Set flag immediately
+        self._stop_called = True  
     
         print("\nStopping combined monitoring system...")
         self.running = False
 
-        # ===============================
-            # RELEASE VIDEO WRITERS
-        # ===============================
         if self.annotated_writer is not None:
             self.annotated_writer.release()
-            print(f"✓ Annotated AVI saved: {os.path.basename(self.annotated_filename)}")
+            print(f"Annotated AVI saved: {os.path.basename(self.annotated_filename)}")
 
         if self.clean_writer is not None:
             self.clean_writer.release()
-            print(f"✓ Clean AVI saved: {os.path.basename(self.clean_filename)}")
+            print(f"Clean AVI saved: {os.path.basename(self.clean_filename)}")
         time.sleep(5)
-        # ===============================
-        # CONVERT AVI → MP4 (STREAMLIT)
-        # ===============================
         self.annotated_mp4 = None
         self.clean_mp4 = None
 
         try:
             if hasattr(self, "annotated_filename") and os.path.exists(self.annotated_filename):
                 self.annotated_mp4 = convert_avi_to_mp4_slow(self.annotated_filename)
-                print(f"✓ Annotated MP4 ready: {os.path.basename(self.annotated_mp4)}")
+                print(f"Annotated MP4 ready: {os.path.basename(self.annotated_mp4)}")
 
             if hasattr(self, "clean_filename") and os.path.exists(self.clean_filename):
                 self.clean_mp4 = convert_avi_to_mp4_slow(self.clean_filename)
-                print(f"✓ Clean MP4 ready: {os.path.basename(self.clean_mp4)}")
+                print(f"Clean MP4 ready: {os.path.basename(self.clean_mp4)}")
 
         except Exception as e:
-            print(f"⚠️ MP4 conversion failed: {e}")
+            print(f"MP4 conversion failed: {e}")
 
-        # ===============================
-        # CLOSE CAMERAS & FILES
-        # ===============================
         try:
             self.crossing_detector.stop()
         except Exception as e:
@@ -1629,12 +1545,9 @@ Generated by Integrated Driver Monitoring System
         except Exception as e:
             print(f"Driver tracker stop error: {e}")
 
-        # ===============================
-        # CLEAN UI
-        # ===============================
         cv2.destroyAllWindows()
 
-        print("✓ System stopped successfully")
+        print("System stopped successfully")
         print(f"All outputs saved in: {BASE_DIR}")
 
 
@@ -1643,10 +1556,8 @@ def main():
     print("COMPLETE DRIVER MONITORING & EVALUATION SYSTEM")
     print("=" * 50)
     
-    # Get national ID from user
     national_id = get_national_id()
     
-    # Initialize loggers after national ID is set
     init_loggers()
     
     print(f"\nStarting evaluation for National ID: {national_id}")
